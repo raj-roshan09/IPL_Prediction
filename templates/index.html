@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IPL Score Predictor</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f1a;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #1a1a2e;
+      border: 1px solid #2a2a4a;
+      border-radius: 16px;
+      padding: 36px;
+      width: 100%;
+      max-width: 680px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      color: #f0c040;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 28px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field.full { grid-column: span 2; }
+
+    label {
+      font-size: 0.78rem;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    select, input {
+      background: #0f0f1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #e0e0e0;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+
+    select:focus, input:focus {
+      outline: none;
+      border-color: #f0c040;
+    }
+
+    .divider {
+      grid-column: span 2;
+      border: none;
+      border-top: 1px solid #2a2a4a;
+      margin: 4px 0;
+    }
+
+    .section-label {
+      grid-column: span 2;
+      font-size: 0.75rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    button {
+      grid-column: span 2;
+      background: #f0c040;
+      color: #0f0f1a;
+      border: none;
+      border-radius: 8px;
+      padding: 13px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    button:hover  { background: #ffd84d; }
+    button:active { transform: scale(0.98); }
+
+    .result {
+      grid-column: span 2;
+      background: #0f0f1a;
+      border: 1px solid #f0c040;
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      display: none;
+    }
+
+    .result.visible { display: block; }
+
+    .result .label {
+      font-size: 0.8rem;
+      color: #888;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .result .score {
+      font-size: 3rem;
+      font-weight: 800;
+      color: #f0c040;
+      line-height: 1;
+    }
+
+    .result .range {
+      font-size: 0.82rem;
+      color: #666;
+      margin-top: 6px;
+    }
+
+    .error-msg {
+      grid-column: span 2;
+      color: #ff6b6b;
+      font-size: 0.85rem;
+      display: none;
+    }
+
+    .error-msg.visible { display: block; }
+
+    .spinner {
+      display: none;
+      grid-column: span 2;
+      text-align: center;
+      color: #888;
+      font-size: 0.9rem;
+    }
+
+    .spinner.visible { display: block; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>🏏 IPL Score Predictor</h1>
+  <p class="subtitle">Predict first innings total from current match state</p>
+
+  <div class="grid">
+
+    <!-- Teams -->
+    <div class="field">
+      <label>Batting Team</label>
+      <select id="bat_team">
+        {% for team in teams %}
+          <option value="{{ team }}">{{ team }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Bowling Team</label>
+      <select id="bowl_team">
+        {% for team in teams %}
+          <option value="{{ team }}">{{ team }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Venue -->
+    <div class="field full">
+      <label>Venue</label>
+      <select id="venue">
+        {% for v in venues %}
+          <option value="{{ v }}">{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <hr class="divider"/>
+    <p class="section-label">Current Match State</p>
+
+    <div class="field">
+      <label>Current Over (5–19)</label>
+      <input type="number" id="over" min="5" max="19" value="10"/>
+    </div>
+
+    <div class="field">
+      <label>Runs Scored</label>
+      <input type="number" id="current_runs" min="0" value="75"/>
+    </div>
+
+    <div class="field">
+      <label>Wickets Fallen</label>
+      <input type="number" id="current_wickets" min="0" max="10" value="2"/>
+    </div>
+
+    <div class="field">
+      <label>Runs in Last 5 Overs</label>
+      <input type="number" id="run_last_5" min="0" value="40"/>
+    </div>
+
+    <div class="field full">
+      <label>Wickets in Last 5 Overs</label>
+      <input type="number" id="wicket_last_5" min="0" max="10" value="1"/>
+    </div>
+
+    <button onclick="predict()">Predict Final Score</button>
+
+    <div class="spinner" id="spinner">Predicting...</div>
+    <div class="error-msg" id="error"></div>
+
+    <div class="result" id="result">
+      <div class="label">Predicted Final Score</div>
+      <div class="score" id="score-value">—</div>
+      <div class="range" id="score-range"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  async function predict() {
+    const bat_team        = document.getElementById('bat_team').value;
+    const bowl_team       = document.getElementById('bowl_team').value;
+    const venue           = document.getElementById('venue').value;
+    const over            = parseInt(document.getElementById('over').value);
+    const current_runs    = parseInt(document.getElementById('current_runs').value);
+    const current_wickets = parseInt(document.getElementById('current_wickets').value);
+    const run_last_5      = parseInt(document.getElementById('run_last_5').value);
+    const wicket_last_5   = parseInt(document.getElementById('wicket_last_5').value);
+
+    if (bat_team === bowl_team) {
+      showError('Batting and bowling teams cannot be the same.');
+      return;
+    }
+    if (over < 5 || over > 19) {
+      showError('Over must be between 5 and 19.');
+      return;
+    }
+
+    hideAll();
+    document.getElementById('spinner').classList.add('visible');
+
+    try {
+      const res = await fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bat_team, bowl_team, venue, over,
+                               current_runs, current_wickets,
+                               run_last_5, wicket_last_5 })
+      });
+
+      const data = await res.json();
+      document.getElementById('spinner').classList.remove('visible');
+
+      if (data.success) {
+        const score = data.predicted_score;
+        document.getElementById('score-value').textContent = score;
+        document.getElementById('score-range').textContent =
+          `Likely range: ${score - 10} – ${score + 10}`;
+        document.getElementById('result').classList.add('visible');
+      } else {
+        showError('Error: ' + data.error);
+      }
+
+    } catch (err) {
+      document.getElementById('spinner').classList.remove('visible');
+      showError('Could not connect to server.');
+    }
+  }
+
+  function showError(msg) {
+    hideAll();
+    const el = document.getElementById('error');
+    el.textContent = msg;
+    el.classList.add('visible');
+  }
+
+  function hideAll() {
+    document.getElementById('result').classList.remove('visible');
+    document.getElementById('error').classList.remove('visible');
+    document.getElementById('spinner').classList.remove('visible');
+  }
+</script>
+</body>
+</html>
